@@ -12,12 +12,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Suresh-Nakkeran/ideacrawler/chromeclient"
+	pb "github.com/Suresh-Nakkeran/ideacrawler/protofiles"
+	sc "github.com/Suresh-Nakkeran/ideacrawler/statuscodes"
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/google/uuid"
 	"github.com/hashicorp/yamux"
-	"github.com/shsms/ideacrawler/chromeclient"
-	pb "github.com/shsms/ideacrawler/protofiles"
-	sc "github.com/shsms/ideacrawler/statuscodes"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )

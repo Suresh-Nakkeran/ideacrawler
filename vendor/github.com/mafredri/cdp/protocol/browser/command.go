@@ -6,32 +6,68 @@ import (
 	"github.com/mafredri/cdp/protocol/target"
 )
 
+// SetPermissionArgs represents the arguments for SetPermission in the Browser domain.
+type SetPermissionArgs struct {
+	Origin           *string              `json:"origin,omitempty"`           // Origin the permission applies to, all origins if not specified.
+	Permission       PermissionDescriptor `json:"permission"`                 // Descriptor of permission to override.
+	Setting          PermissionSetting    `json:"setting"`                    // Setting of the permission.
+	BrowserContextID *ContextID           `json:"browserContextId,omitempty"` // Context to override. When omitted, default browser context is used.
+}
+
+// NewSetPermissionArgs initializes SetPermissionArgs with the required arguments.
+func NewSetPermissionArgs(permission PermissionDescriptor, setting PermissionSetting) *SetPermissionArgs {
+	args := new(SetPermissionArgs)
+	args.Permission = permission
+	args.Setting = setting
+	return args
+}
+
+// SetOrigin sets the Origin optional argument. Origin the permission
+// applies to, all origins if not specified.
+func (a *SetPermissionArgs) SetOrigin(origin string) *SetPermissionArgs {
+	a.Origin = &origin
+	return a
+}
+
+// SetBrowserContextID sets the BrowserContextID optional argument.
+// Context to override. When omitted, default browser context is used.
+func (a *SetPermissionArgs) SetBrowserContextID(browserContextID ContextID) *SetPermissionArgs {
+	a.BrowserContextID = &browserContextID
+	return a
+}
+
 // GrantPermissionsArgs represents the arguments for GrantPermissions in the Browser domain.
 type GrantPermissionsArgs struct {
-	Origin           string                   `json:"origin"`                     // No description.
-	Permissions      []PermissionType         `json:"permissions"`                // No description.
-	BrowserContextID *target.BrowserContextID `json:"browserContextId,omitempty"` // BrowserContext to override permissions. When omitted, default browser context is used.
+	Origin           *string          `json:"origin,omitempty"`           // Origin the permission applies to, all origins if not specified.
+	Permissions      []PermissionType `json:"permissions"`                // No description.
+	BrowserContextID *ContextID       `json:"browserContextId,omitempty"` // BrowserContext to override permissions. When omitted, default browser context is used.
 }
 
 // NewGrantPermissionsArgs initializes GrantPermissionsArgs with the required arguments.
-func NewGrantPermissionsArgs(origin string, permissions []PermissionType) *GrantPermissionsArgs {
+func NewGrantPermissionsArgs(permissions []PermissionType) *GrantPermissionsArgs {
 	args := new(GrantPermissionsArgs)
-	args.Origin = origin
 	args.Permissions = permissions
 	return args
+}
+
+// SetOrigin sets the Origin optional argument. Origin the permission
+// applies to, all origins if not specified.
+func (a *GrantPermissionsArgs) SetOrigin(origin string) *GrantPermissionsArgs {
+	a.Origin = &origin
+	return a
 }
 
 // SetBrowserContextID sets the BrowserContextID optional argument.
 // BrowserContext to override permissions. When omitted, default
 // browser context is used.
-func (a *GrantPermissionsArgs) SetBrowserContextID(browserContextID target.BrowserContextID) *GrantPermissionsArgs {
+func (a *GrantPermissionsArgs) SetBrowserContextID(browserContextID ContextID) *GrantPermissionsArgs {
 	a.BrowserContextID = &browserContextID
 	return a
 }
 
 // ResetPermissionsArgs represents the arguments for ResetPermissions in the Browser domain.
 type ResetPermissionsArgs struct {
-	BrowserContextID *target.BrowserContextID `json:"browserContextId,omitempty"` // BrowserContext to reset permissions. When omitted, default browser context is used.
+	BrowserContextID *ContextID `json:"browserContextId,omitempty"` // BrowserContext to reset permissions. When omitted, default browser context is used.
 }
 
 // NewResetPermissionsArgs initializes ResetPermissionsArgs with the required arguments.
@@ -44,8 +80,44 @@ func NewResetPermissionsArgs() *ResetPermissionsArgs {
 // SetBrowserContextID sets the BrowserContextID optional argument.
 // BrowserContext to reset permissions. When omitted, default browser
 // context is used.
-func (a *ResetPermissionsArgs) SetBrowserContextID(browserContextID target.BrowserContextID) *ResetPermissionsArgs {
+func (a *ResetPermissionsArgs) SetBrowserContextID(browserContextID ContextID) *ResetPermissionsArgs {
 	a.BrowserContextID = &browserContextID
+	return a
+}
+
+// SetDownloadBehaviorArgs represents the arguments for SetDownloadBehavior in the Browser domain.
+type SetDownloadBehaviorArgs struct {
+	// Behavior Whether to allow all or deny all download requests, or use
+	// default Chrome behavior if available (otherwise deny).
+	// |allowAndName| allows download and names files according to their
+	// dowmload guids.
+	//
+	// Values: "deny", "allow", "allowAndName", "default".
+	Behavior         string     `json:"behavior"`
+	BrowserContextID *ContextID `json:"browserContextId,omitempty"` // BrowserContext to set download behavior. When omitted, default browser context is used.
+	DownloadPath     *string    `json:"downloadPath,omitempty"`     // The default path to save downloaded files to. This is required if behavior is set to 'allow' or 'allowAndName'.
+}
+
+// NewSetDownloadBehaviorArgs initializes SetDownloadBehaviorArgs with the required arguments.
+func NewSetDownloadBehaviorArgs(behavior string) *SetDownloadBehaviorArgs {
+	args := new(SetDownloadBehaviorArgs)
+	args.Behavior = behavior
+	return args
+}
+
+// SetBrowserContextID sets the BrowserContextID optional argument.
+// BrowserContext to set download behavior. When omitted, default
+// browser context is used.
+func (a *SetDownloadBehaviorArgs) SetBrowserContextID(browserContextID ContextID) *SetDownloadBehaviorArgs {
+	a.BrowserContextID = &browserContextID
+	return a
+}
+
+// SetDownloadPath sets the DownloadPath optional argument. The
+// default path to save downloaded files to. This is required if
+// behavior is set to 'allow' or 'allowAndName'.
+func (a *SetDownloadBehaviorArgs) SetDownloadPath(downloadPath string) *SetDownloadBehaviorArgs {
+	a.DownloadPath = &downloadPath
 	return a
 }
 
@@ -140,14 +212,22 @@ type GetWindowBoundsReply struct {
 
 // GetWindowForTargetArgs represents the arguments for GetWindowForTarget in the Browser domain.
 type GetWindowForTargetArgs struct {
-	TargetID target.ID `json:"targetId"` // Devtools agent host id.
+	TargetID *target.ID `json:"targetId,omitempty"` // Devtools agent host id. If called as a part of the session, associated targetId is used.
 }
 
 // NewGetWindowForTargetArgs initializes GetWindowForTargetArgs with the required arguments.
-func NewGetWindowForTargetArgs(targetID target.ID) *GetWindowForTargetArgs {
+func NewGetWindowForTargetArgs() *GetWindowForTargetArgs {
 	args := new(GetWindowForTargetArgs)
-	args.TargetID = targetID
+
 	return args
+}
+
+// SetTargetID sets the TargetID optional argument. Devtools agent
+// host id. If called as a part of the session, associated targetId is
+// used.
+func (a *GetWindowForTargetArgs) SetTargetID(targetID target.ID) *GetWindowForTargetArgs {
+	a.TargetID = &targetID
+	return a
 }
 
 // GetWindowForTargetReply represents the return values for GetWindowForTarget in the Browser domain.
@@ -168,4 +248,29 @@ func NewSetWindowBoundsArgs(windowID WindowID, bounds Bounds) *SetWindowBoundsAr
 	args.WindowID = windowID
 	args.Bounds = bounds
 	return args
+}
+
+// SetDockTileArgs represents the arguments for SetDockTile in the Browser domain.
+type SetDockTileArgs struct {
+	BadgeLabel *string `json:"badgeLabel,omitempty"` // No description.
+	Image      *string `json:"image,omitempty"`      // Png encoded image.
+}
+
+// NewSetDockTileArgs initializes SetDockTileArgs with the required arguments.
+func NewSetDockTileArgs() *SetDockTileArgs {
+	args := new(SetDockTileArgs)
+
+	return args
+}
+
+// SetBadgeLabel sets the BadgeLabel optional argument.
+func (a *SetDockTileArgs) SetBadgeLabel(badgeLabel string) *SetDockTileArgs {
+	a.BadgeLabel = &badgeLabel
+	return a
+}
+
+// SetImage sets the Image optional argument. Png encoded image.
+func (a *SetDockTileArgs) SetImage(image string) *SetDockTileArgs {
+	a.Image = &image
+	return a
 }

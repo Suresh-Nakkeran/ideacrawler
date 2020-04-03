@@ -30,6 +30,34 @@ func (a *ContinueToLocationArgs) SetTargetCallFrames(targetCallFrames string) *C
 	return a
 }
 
+// EnableArgs represents the arguments for Enable in the Debugger domain.
+type EnableArgs struct {
+	// MaxScriptsCacheSize The maximum size in bytes of collected scripts
+	// (not referenced by other heap objects) the debugger can hold. Puts
+	// no limit if parameter is omitted.
+	//
+	// Note: This property is experimental.
+	MaxScriptsCacheSize *float64 `json:"maxScriptsCacheSize,omitempty"`
+}
+
+// NewEnableArgs initializes EnableArgs with the required arguments.
+func NewEnableArgs() *EnableArgs {
+	args := new(EnableArgs)
+
+	return args
+}
+
+// SetMaxScriptsCacheSize sets the MaxScriptsCacheSize optional argument.
+// The maximum size in bytes of collected scripts (not referenced by
+// other heap objects) the debugger can hold. Puts no limit if
+// parameter is omitted.
+//
+// Note: This property is experimental.
+func (a *EnableArgs) SetMaxScriptsCacheSize(maxScriptsCacheSize float64) *EnableArgs {
+	a.MaxScriptsCacheSize = &maxScriptsCacheSize
+	return a
+}
+
 // EnableReply represents the return values for Enable in the Debugger domain.
 type EnableReply struct {
 	// DebuggerID Unique identifier of the debugger.
@@ -179,7 +207,25 @@ func NewGetScriptSourceArgs(scriptID runtime.ScriptID) *GetScriptSourceArgs {
 
 // GetScriptSourceReply represents the return values for GetScriptSource in the Debugger domain.
 type GetScriptSourceReply struct {
-	ScriptSource string `json:"scriptSource"` // Script source.
+	ScriptSource string  `json:"scriptSource"`       // Script source (empty in case of Wasm bytecode).
+	Bytecode     *string `json:"bytecode,omitempty"` // Wasm bytecode.
+}
+
+// GetWasmBytecodeArgs represents the arguments for GetWasmBytecode in the Debugger domain.
+type GetWasmBytecodeArgs struct {
+	ScriptID runtime.ScriptID `json:"scriptId"` // Id of the Wasm script to get source for.
+}
+
+// NewGetWasmBytecodeArgs initializes GetWasmBytecodeArgs with the required arguments.
+func NewGetWasmBytecodeArgs(scriptID runtime.ScriptID) *GetWasmBytecodeArgs {
+	args := new(GetWasmBytecodeArgs)
+	args.ScriptID = scriptID
+	return args
+}
+
+// GetWasmBytecodeReply represents the return values for GetWasmBytecode in the Debugger domain.
+type GetWasmBytecodeReply struct {
+	Bytecode string `json:"bytecode"` // Script source.
 }
 
 // GetStackTraceArgs represents the arguments for GetStackTrace in the Debugger domain.
@@ -243,6 +289,30 @@ type RestartFrameReply struct {
 	//
 	// Note: This property is experimental.
 	AsyncStackTraceID *runtime.StackTraceID `json:"asyncStackTraceId,omitempty"`
+}
+
+// ResumeArgs represents the arguments for Resume in the Debugger domain.
+type ResumeArgs struct {
+	TerminateOnResume *bool `json:"terminateOnResume,omitempty"` // Set to true to terminate execution upon resuming execution. In contrast to Runtime.terminateExecution, this will allows to execute further JavaScript (i.e. via evaluation) until execution of the paused code is actually resumed, at which point termination is triggered. If execution is currently not paused, this parameter has no effect.
+}
+
+// NewResumeArgs initializes ResumeArgs with the required arguments.
+func NewResumeArgs() *ResumeArgs {
+	args := new(ResumeArgs)
+
+	return args
+}
+
+// SetTerminateOnResume sets the TerminateOnResume optional argument.
+// Set to true to terminate execution upon resuming execution. In
+// contrast to Runtime.terminateExecution, this will allows to execute
+// further JavaScript (i.e. via evaluation) until execution of the
+// paused code is actually resumed, at which point termination is
+// triggered. If execution is currently not paused, this parameter has
+// no effect.
+func (a *ResumeArgs) SetTerminateOnResume(terminateOnResume bool) *ResumeArgs {
+	a.TerminateOnResume = &terminateOnResume
+	return a
 }
 
 // SearchInContentArgs represents the arguments for SearchInContent in the Debugger domain.
@@ -343,6 +413,26 @@ func (a *SetBreakpointArgs) SetCondition(condition string) *SetBreakpointArgs {
 type SetBreakpointReply struct {
 	BreakpointID   BreakpointID `json:"breakpointId"`   // Id of the created breakpoint for further reference.
 	ActualLocation Location     `json:"actualLocation"` // Location this breakpoint resolved into.
+}
+
+// SetInstrumentationBreakpointArgs represents the arguments for SetInstrumentationBreakpoint in the Debugger domain.
+type SetInstrumentationBreakpointArgs struct {
+	// Instrumentation Instrumentation name.
+	//
+	// Values: "beforeScriptExecution", "beforeScriptWithSourceMapExecution".
+	Instrumentation string `json:"instrumentation"`
+}
+
+// NewSetInstrumentationBreakpointArgs initializes SetInstrumentationBreakpointArgs with the required arguments.
+func NewSetInstrumentationBreakpointArgs(instrumentation string) *SetInstrumentationBreakpointArgs {
+	args := new(SetInstrumentationBreakpointArgs)
+	args.Instrumentation = instrumentation
+	return args
+}
+
+// SetInstrumentationBreakpointReply represents the return values for SetInstrumentationBreakpoint in the Debugger domain.
+type SetInstrumentationBreakpointReply struct {
+	BreakpointID BreakpointID `json:"breakpointId"` // Id of the created breakpoint for further reference.
 }
 
 // SetBreakpointByURLArgs represents the arguments for SetBreakpointByURL in the Debugger domain.
@@ -537,8 +627,8 @@ func NewSetVariableValueArgs(scopeNumber int, variableName string, newValue runt
 
 // StepIntoArgs represents the arguments for StepInto in the Debugger domain.
 type StepIntoArgs struct {
-	// BreakOnAsyncCall Debugger will issue additional Debugger.paused
-	// notification if any async task is scheduled before next pause.
+	// BreakOnAsyncCall Debugger will pause on the execution of the first
+	// async task which was scheduled before next pause.
 	//
 	// Note: This property is experimental.
 	BreakOnAsyncCall *bool `json:"breakOnAsyncCall,omitempty"`
@@ -552,8 +642,8 @@ func NewStepIntoArgs() *StepIntoArgs {
 }
 
 // SetBreakOnAsyncCall sets the BreakOnAsyncCall optional argument.
-// Debugger will issue additional Debugger.paused notification if any
-// async task is scheduled before next pause.
+// Debugger will pause on the execution of the first async task which
+// was scheduled before next pause.
 //
 // Note: This property is experimental.
 func (a *StepIntoArgs) SetBreakOnAsyncCall(breakOnAsyncCall bool) *StepIntoArgs {

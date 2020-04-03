@@ -18,6 +18,9 @@
 
 syntax = "proto3";
 
+// command to generate pb.go files
+// protoc --proto_path=protofiles/ -I=$GOPATH/src/github.com/google/protobuf/src/ --go_out=plugins=grpc:protofiles protofiles/ideacrawler.proto
+
 package protofiles;
 
 import "google/protobuf/empty.proto";
@@ -137,6 +140,12 @@ message DomainOpt {
 
   // If true ships the page at depth 0, else only pattern matched urls are shipped
   bool callbackSeedUrl = 40;
+
+  // disable loading images in chrome
+  bool disableImages = 41;
+
+  // get page scroll count
+  int32 scrollCount = 42;
 }
 
 message JobID {

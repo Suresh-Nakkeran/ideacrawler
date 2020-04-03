@@ -25,7 +25,7 @@ from pyclient import *
 
 if __name__ == "__main__":
     def printURL(ph, ccObj):
-        print ph.success, ph.httpstatuscode, ph.error, ph.url, ph.metaStr
+        print(ph.success, ph.httpstatuscode, ph.error, ph.url, ph.metaStr)
         if ph.success:
             with open(ph.url.replace('/', '').replace(':', '').replace('?', ''), "wb") as text_file:
                 text_file.write(ph.content)

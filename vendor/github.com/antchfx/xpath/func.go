@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -133,34 +134,64 @@ func roundFunc(q query, t iterator) interface{} {
 }
 
 // nameFunc is a XPath functions name([node-set]).
-func nameFunc(q query, t iterator) interface{} {
-	v := q.Select(t)
-	if v == nil {
-		return ""
+func nameFunc(arg query) func(query, iterator) interface{} {
+	return func(q query, t iterator) interface{} {
+		var v NodeNavigator
+		if arg == nil {
+			v = t.Current()
+		} else {
+			v = arg.Select(t)
+			if v == nil {
+				return ""
+			}
+		}
+		ns := v.Prefix()
+		if ns == "" {
+			return v.LocalName()
+		}
+		return ns + ":" + v.LocalName()
 	}
-	ns := v.Prefix()
-	if ns == "" {
-		return v.LocalName()
-	}
-	return ns + ":" + v.LocalName()
 }
 
 // localNameFunc is a XPath functions local-name([node-set]).
-func localNameFunc(q query, t iterator) interface{} {
-	v := q.Select(t)
-	if v == nil {
-		return ""
+func localNameFunc(arg query) func(query, iterator) interface{} {
+	return func(q query, t iterator) interface{} {
+		var v NodeNavigator
+		if arg == nil {
+			v = t.Current()
+		} else {
+			v = arg.Select(t)
+			if v == nil {
+				return ""
+			}
+		}
+		return v.LocalName()
 	}
-	return v.LocalName()
 }
 
 // namespaceFunc is a XPath functions namespace-uri([node-set]).
-func namespaceFunc(q query, t iterator) interface{} {
-	v := q.Select(t)
-	if v == nil {
-		return ""
+func namespaceFunc(arg query) func(query, iterator) interface{} {
+	return func(q query, t iterator) interface{} {
+		var v NodeNavigator
+		if arg == nil {
+			v = t.Current()
+		} else {
+			// Get the first node in the node-set if specified.
+			v = arg.Select(t)
+			if v == nil {
+				return ""
+			}
+		}
+		// fix about namespace-uri() bug: https://github.com/antchfx/xmlquery/issues/22
+		// TODO: In the next version, add NamespaceURL() to the NodeNavigator interface.
+		type namespaceURL interface {
+			NamespaceURL() string
+		}
+		if f, ok := v.(namespaceURL); ok {
+			return f.NamespaceURL()
+		}
+		return v.Prefix()
 	}
-	return v.Prefix()
 }
 
 func asBool(t iterator, v interface{}) bool {
@@ -231,7 +262,7 @@ func startwithFunc(arg1, arg2 query) func(query, iterator) interface{} {
 			m, n string
 			ok   bool
 		)
-		switch typ := arg1.Evaluate(t).(type) {
+		switch typ := functionArgs(arg1).Evaluate(t).(type) {
 		case string:
 			m = typ
 		case query:
@@ -243,7 +274,7 @@ func startwithFunc(arg1, arg2 query) func(query, iterator) interface{} {
 		default:
 			panic(errors.New("starts-with() function argument type must be string"))
 		}
-		n, ok = arg2.Evaluate(t).(string)
+		n, ok = functionArgs(arg2).Evaluate(t).(string)
 		if !ok {
 			panic(errors.New("starts-with() function argument type must be string"))
 		}
@@ -258,7 +289,7 @@ func endwithFunc(arg1, arg2 query) func(query, iterator) interface{} {
 			m, n string
 			ok   bool
 		)
-		switch typ := arg1.Evaluate(t).(type) {
+		switch typ := functionArgs(arg1).Evaluate(t).(type) {
 		case string:
 			m = typ
 		case query:
@@ -270,7 +301,7 @@ func endwithFunc(arg1, arg2 query) func(query, iterator) interface{} {
 		default:
 			panic(errors.New("ends-with() function argument type must be string"))
 		}
-		n, ok = arg2.Evaluate(t).(string)
+		n, ok = functionArgs(arg2).Evaluate(t).(string)
 		if !ok {
 			panic(errors.New("ends-with() function argument type must be string"))
 		}
@@ -285,8 +316,7 @@ func containsFunc(arg1, arg2 query) func(query, iterator) interface{} {
 			m, n string
 			ok   bool
 		)
-
-		switch typ := arg1.Evaluate(t).(type) {
+		switch typ := functionArgs(arg1).Evaluate(t).(type) {
 		case string:
 			m = typ
 		case query:
@@ -299,7 +329,7 @@ func containsFunc(arg1, arg2 query) func(query, iterator) interface{} {
 			panic(errors.New("contains() function argument type must be string"))
 		}
 
-		n, ok = arg2.Evaluate(t).(string)
+		n, ok = functionArgs(arg2).Evaluate(t).(string)
 		if !ok {
 			panic(errors.New("contains() function argument type must be string"))
 		}
@@ -307,6 +337,11 @@ func containsFunc(arg1, arg2 query) func(query, iterator) interface{} {
 		return strings.Contains(m, n)
 	}
 }
+
+var (
+	regnewline  = regexp.MustCompile(`[\r\n\t]`)
+	regseqspace = regexp.MustCompile(`\s{2,}`)
+)
 
 // normalizespaceFunc is XPath functions normalize-space(string?)
 func normalizespaceFunc(q query, t iterator) interface{} {
@@ -317,18 +352,21 @@ func normalizespaceFunc(q query, t iterator) interface{} {
 	case query:
 		node := typ.Select(t)
 		if node == nil {
-			return false
+			return ""
 		}
 		m = node.Value()
 	}
-	return strings.TrimSpace(m)
+	m = strings.TrimSpace(m)
+	m = regnewline.ReplaceAllString(m, " ")
+	m = regseqspace.ReplaceAllString(m, " ")
+	return m
 }
 
 // substringFunc is XPath functions substring function returns a part of a given string.
 func substringFunc(arg1, arg2, arg3 query) func(query, iterator) interface{} {
 	return func(q query, t iterator) interface{} {
 		var m string
-		switch typ := arg1.Evaluate(t).(type) {
+		switch typ := functionArgs(arg1).Evaluate(t).(type) {
 		case string:
 			m = typ
 		case query:
@@ -342,14 +380,14 @@ func substringFunc(arg1, arg2, arg3 query) func(query, iterator) interface{} {
 		var start, length float64
 		var ok bool
 
-		if start, ok = arg2.Evaluate(t).(float64); !ok {
+		if start, ok = functionArgs(arg2).Evaluate(t).(float64); !ok {
 			panic(errors.New("substring() function first argument type must be int"))
 		} else if start < 1 {
 			panic(errors.New("substring() function first argument type must be >= 1"))
 		}
 		start--
 		if arg3 != nil {
-			if length, ok = arg3.Evaluate(t).(float64); !ok {
+			if length, ok = functionArgs(arg3).Evaluate(t).(float64); !ok {
 				panic(errors.New("substring() function second argument type must be int"))
 			}
 		}
@@ -367,7 +405,7 @@ func substringFunc(arg1, arg2, arg3 query) func(query, iterator) interface{} {
 func substringIndFunc(arg1, arg2 query, after bool) func(query, iterator) interface{} {
 	return func(q query, t iterator) interface{} {
 		var str string
-		switch v := arg1.Evaluate(t).(type) {
+		switch v := functionArgs(arg1).Evaluate(t).(type) {
 		case string:
 			str = v
 		case query:
@@ -378,7 +416,7 @@ func substringIndFunc(arg1, arg2 query, after bool) func(query, iterator) interf
 			str = node.Value()
 		}
 		var word string
-		switch v := arg2.Evaluate(t).(type) {
+		switch v := functionArgs(arg2).Evaluate(t).(type) {
 		case string:
 			word = v
 		case query:
@@ -407,7 +445,7 @@ func substringIndFunc(arg1, arg2 query, after bool) func(query, iterator) interf
 // equal to the number of characters in a given string.
 func stringLengthFunc(arg1 query) func(query, iterator) interface{} {
 	return func(q query, t iterator) interface{} {
-		switch v := arg1.Evaluate(t).(type) {
+		switch v := functionArgs(arg1).Evaluate(t).(type) {
 		case string:
 			return float64(len(v))
 		case query:
@@ -424,9 +462,9 @@ func stringLengthFunc(arg1 query) func(query, iterator) interface{} {
 // translateFunc is XPath functions translate() function returns a replaced string.
 func translateFunc(arg1, arg2, arg3 query) func(query, iterator) interface{} {
 	return func(q query, t iterator) interface{} {
-		str := asString(t, arg1.Evaluate(t))
-		src := asString(t, arg2.Evaluate(t))
-		dst := asString(t, arg3.Evaluate(t))
+		str := asString(t, functionArgs(arg1).Evaluate(t))
+		src := asString(t, functionArgs(arg2).Evaluate(t))
+		dst := asString(t, functionArgs(arg3).Evaluate(t))
 
 		var replace []string
 		for i, s := range src {
@@ -437,6 +475,17 @@ func translateFunc(arg1, arg2, arg3 query) func(query, iterator) interface{} {
 			replace = append(replace, string(s), d)
 		}
 		return strings.NewReplacer(replace...).Replace(str)
+	}
+}
+
+// replaceFunc is XPath functions replace() function returns a replaced string.
+func replaceFunc(arg1, arg2, arg3 query) func(query, iterator) interface{} {
+	return func(q query, t iterator) interface{} {
+		str := asString(t, functionArgs(arg1).Evaluate(t))
+		src := asString(t, functionArgs(arg2).Evaluate(t))
+		dst := asString(t, functionArgs(arg3).Evaluate(t))
+
+		return strings.Replace(str, src, dst, -1)
 	}
 }
 
@@ -460,6 +509,7 @@ func concatFunc(args ...query) func(query, iterator) interface{} {
 	return func(q query, t iterator) interface{} {
 		var a []string
 		for _, v := range args {
+			v = functionArgs(v)
 			switch v := v.Evaluate(t).(type) {
 			case string:
 				a = append(a, v)
@@ -472,4 +522,12 @@ func concatFunc(args ...query) func(query, iterator) interface{} {
 		}
 		return strings.Join(a, "")
 	}
+}
+
+// https://github.com/antchfx/xpath/issues/43
+func functionArgs(q query) query {
+	if _, ok := q.(*functionQuery); ok {
+		return q
+	}
+	return q.Clone()
 }

@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
+	gc "github.com/Suresh-Nakkeran/ideacrawler/goclient"
 	"github.com/phayes/freeport"
-	gc "github.com/shsms/ideacrawler/goclient"
 )
 
 var serverRunning bool

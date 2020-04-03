@@ -19,14 +19,14 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/PuerkitoBio/purell"
+	"github.com/Suresh-Nakkeran/fetchbot"
+	"github.com/Suresh-Nakkeran/ideacrawler/chromeclient"
+	pb "github.com/Suresh-Nakkeran/ideacrawler/protofiles"
+	sc "github.com/Suresh-Nakkeran/ideacrawler/statuscodes"
 	"github.com/antchfx/xpath"
 	htmlquery "github.com/antchfx/xquery/html"
 	"github.com/gregjones/httpcache"
 	"github.com/gregjones/httpcache/diskcache"
-	"github.com/shsms/fetchbot"
-	"github.com/shsms/ideacrawler/chromeclient"
-	pb "github.com/shsms/ideacrawler/protofiles"
-	sc "github.com/shsms/ideacrawler/statuscodes"
 	"golang.org/x/sync/semaphore"
 )
 
@@ -477,9 +477,9 @@ func (s *ideaCrawlerWorker) makeHTTPClientLoginDirect(j *job, networkTransport h
 	return &Doer{httpClient, j, semaphore.NewWeighted(int64(j.opts.MaxConcurrentRequests)), s}, nil
 }
 
-func (s *ideaCrawlerWorker) setupChromeClient(chromeBinary string) {
+func (s *ideaCrawlerWorker) setupChromeClient(chromeBinary string, userAgent string, disableImages bool, scrollCount int32) {
 	if s.ccl == nil {
-		s.ccl = chromeclient.NewChromeClient(chromeBinary)
+		s.ccl = chromeclient.NewChromeClient(chromeBinary, userAgent, disableImages, scrollCount)
 		s.ccl.CheckChromeProcess()
 	}
 }
@@ -490,7 +490,7 @@ func (s *ideaCrawlerWorker) makeHTTPClientRawChrome(j *job) (fetchbot.Doer, erro
 		j.opts.ChromeBinary = "/usr/lib64/chromium-browser/headless_shell"
 	}
 
-	s.setupChromeClient(j.opts.ChromeBinary)
+	s.setupChromeClient(j.opts.ChromeBinary, j.opts.Useragent, j.opts.DisableImages, j.opts.ScrollCount)
 	j.cd = s.ccl.NewChromeDoer()
 	if j.opts.DomLoadTime > 0 {
 		j.cd.SetDomLoadTime(j.opts.DomLoadTime)
@@ -503,7 +503,7 @@ func (s *ideaCrawlerWorker) makeHTTPClientLoginChrome(j *job) (fetchbot.Doer, er
 	if j.opts.ChromeBinary == "" {
 		j.opts.ChromeBinary = "/usr/lib64/chromium-browser/headless_shell"
 	}
-	s.setupChromeClient(j.opts.ChromeBinary)
+	s.setupChromeClient(j.opts.ChromeBinary, j.opts.Useragent, j.opts.DisableImages, j.opts.ScrollCount)
 	j.cd = s.ccl.NewChromeDoer()
 	if j.opts.DomLoadTime > 0 {
 		j.cd.SetDomLoadTime(j.opts.DomLoadTime)

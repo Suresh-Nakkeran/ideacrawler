@@ -7,8 +7,10 @@ import (
 	"github.com/mafredri/cdp/protocol/animation"
 	"github.com/mafredri/cdp/protocol/applicationcache"
 	"github.com/mafredri/cdp/protocol/audits"
+	"github.com/mafredri/cdp/protocol/backgroundservice"
 	"github.com/mafredri/cdp/protocol/browser"
 	"github.com/mafredri/cdp/protocol/cachestorage"
+	"github.com/mafredri/cdp/protocol/cast"
 	"github.com/mafredri/cdp/protocol/console"
 	"github.com/mafredri/cdp/protocol/css"
 	"github.com/mafredri/cdp/protocol/database"
@@ -19,6 +21,7 @@ import (
 	"github.com/mafredri/cdp/protocol/domsnapshot"
 	"github.com/mafredri/cdp/protocol/domstorage"
 	"github.com/mafredri/cdp/protocol/emulation"
+	"github.com/mafredri/cdp/protocol/fetch"
 	"github.com/mafredri/cdp/protocol/headlessexperimental"
 	"github.com/mafredri/cdp/protocol/heapprofiler"
 	"github.com/mafredri/cdp/protocol/indexeddb"
@@ -27,6 +30,7 @@ import (
 	"github.com/mafredri/cdp/protocol/io"
 	"github.com/mafredri/cdp/protocol/layertree"
 	"github.com/mafredri/cdp/protocol/log"
+	"github.com/mafredri/cdp/protocol/media"
 	"github.com/mafredri/cdp/protocol/memory"
 	"github.com/mafredri/cdp/protocol/network"
 	"github.com/mafredri/cdp/protocol/overlay"
@@ -40,9 +44,10 @@ import (
 	"github.com/mafredri/cdp/protocol/storage"
 	"github.com/mafredri/cdp/protocol/systeminfo"
 	"github.com/mafredri/cdp/protocol/target"
-	"github.com/mafredri/cdp/protocol/testing"
 	"github.com/mafredri/cdp/protocol/tethering"
 	"github.com/mafredri/cdp/protocol/tracing"
+	"github.com/mafredri/cdp/protocol/webaudio"
+	"github.com/mafredri/cdp/protocol/webauthn"
 	"github.com/mafredri/cdp/rpcc"
 )
 
@@ -54,9 +59,11 @@ type Client struct {
 	Animation            Animation
 	ApplicationCache     ApplicationCache
 	Audits               Audits
+	BackgroundService    BackgroundService
 	Browser              Browser
 	CSS                  CSS
 	CacheStorage         CacheStorage
+	Cast                 Cast
 	Console              Console
 	DOM                  DOM
 	DOMDebugger          DOMDebugger
@@ -66,6 +73,7 @@ type Client struct {
 	Debugger             Debugger
 	DeviceOrientation    DeviceOrientation
 	Emulation            Emulation
+	Fetch                Fetch
 	HeadlessExperimental HeadlessExperimental
 	HeapProfiler         HeapProfiler
 	IO                   IO
@@ -74,6 +82,7 @@ type Client struct {
 	Inspector            Inspector
 	LayerTree            LayerTree
 	Log                  Log
+	Media                Media
 	Memory               Memory
 	Network              Network
 	Overlay              Overlay
@@ -87,9 +96,10 @@ type Client struct {
 	Storage              Storage
 	SystemInfo           SystemInfo
 	Target               Target
-	Testing              Testing
 	Tethering            Tethering
 	Tracing              Tracing
+	WebAudio             WebAudio
+	WebAuthn             WebAuthn
 }
 
 // NewClient returns a new Client that uses conn
@@ -100,9 +110,11 @@ func NewClient(conn *rpcc.Conn) *Client {
 		Animation:            animation.NewClient(conn),
 		ApplicationCache:     applicationcache.NewClient(conn),
 		Audits:               audits.NewClient(conn),
+		BackgroundService:    backgroundservice.NewClient(conn),
 		Browser:              browser.NewClient(conn),
 		CSS:                  css.NewClient(conn),
 		CacheStorage:         cachestorage.NewClient(conn),
+		Cast:                 cast.NewClient(conn),
 		Console:              console.NewClient(conn),
 		DOM:                  dom.NewClient(conn),
 		DOMDebugger:          domdebugger.NewClient(conn),
@@ -112,6 +124,7 @@ func NewClient(conn *rpcc.Conn) *Client {
 		Debugger:             debugger.NewClient(conn),
 		DeviceOrientation:    deviceorientation.NewClient(conn),
 		Emulation:            emulation.NewClient(conn),
+		Fetch:                fetch.NewClient(conn),
 		HeadlessExperimental: headlessexperimental.NewClient(conn),
 		HeapProfiler:         heapprofiler.NewClient(conn),
 		IO:                   io.NewClient(conn),
@@ -120,6 +133,7 @@ func NewClient(conn *rpcc.Conn) *Client {
 		Inspector:            inspector.NewClient(conn),
 		LayerTree:            layertree.NewClient(conn),
 		Log:                  log.NewClient(conn),
+		Media:                media.NewClient(conn),
 		Memory:               memory.NewClient(conn),
 		Network:              network.NewClient(conn),
 		Overlay:              overlay.NewClient(conn),
@@ -133,8 +147,9 @@ func NewClient(conn *rpcc.Conn) *Client {
 		Storage:              storage.NewClient(conn),
 		SystemInfo:           systeminfo.NewClient(conn),
 		Target:               target.NewClient(conn),
-		Testing:              testing.NewClient(conn),
 		Tethering:            tethering.NewClient(conn),
 		Tracing:              tracing.NewClient(conn),
+		WebAudio:             webaudio.NewClient(conn),
+		WebAuthn:             webauthn.NewClient(conn),
 	}
 }

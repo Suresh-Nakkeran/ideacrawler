@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/PuerkitoBio/fetchbot"
-	"github.com/shsms/ideacrawler/prefetchurl"
+	"github.com/Suresh-Nakkeran/fetchbot"
+	"github.com/Suresh-Nakkeran/ideacrawler/prefetchurl"
 	"golang.org/x/net/context"
 	"golang.org/x/sync/semaphore"
 )

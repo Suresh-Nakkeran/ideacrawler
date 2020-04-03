@@ -26,8 +26,8 @@ import (
 	"net"
 	"time"
 
+	pb "github.com/Suresh-Nakkeran/ideacrawler/protofiles"
 	"github.com/golang/protobuf/ptypes/empty"
-	pb "github.com/shsms/ideacrawler/protofiles"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )

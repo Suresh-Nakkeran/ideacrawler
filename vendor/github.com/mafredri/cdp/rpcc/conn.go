@@ -2,6 +2,7 @@ package rpcc
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -39,8 +40,8 @@ func WithCodec(f func(conn io.ReadWriter) Codec) DialOption {
 // connection. It can be used to replace the WebSocket library used by this
 // package or to communicate over a different protocol.
 //
-// This option overrides the default WebSocket dialer and both
-// WithWriteBufferSize and WithCompression become no-op.
+// This option overrides the default WebSocket dialer and all of:
+// WithCompression, WithTLSConfig and WithWriteBufferSize become no-op.
 func WithDialer(f func(ctx context.Context, addr string) (io.ReadWriteCloser, error)) DialOption {
 	return func(o *dialOptions) {
 		o.dialer = f
@@ -69,15 +70,22 @@ func WithCompression() DialOption {
 	}
 }
 
+// WithTLSClientConfig specifies the TLS configuration to use with tls.Client.
+func WithTLSClientConfig(c *tls.Config) DialOption {
+	return func(o *dialOptions) {
+		o.wsDialer.TLSClientConfig = c
+	}
+}
+
 type dialOptions struct {
 	codec    func(io.ReadWriter) Codec
 	dialer   func(context.Context, string) (io.ReadWriteCloser, error)
 	wsDialer websocket.Dialer
 }
 
-// Dial connects to target and returns an active connection.
-// The target should be a WebSocket URL, format:
-// "ws://localhost:9222/target".
+// Dial connects to target and returns an active connection. The target
+// should be a WebSocket URL, "ws://" for HTTP and "wss://" for HTTPS.
+// Example: "ws://localhost:9222/target".
 func Dial(target string, opts ...DialOption) (*Conn, error) {
 	return DialContext(context.Background(), target, opts...)
 }
@@ -232,18 +240,17 @@ type Conn struct {
 	compressionLevel func(level int) error
 
 	mu      sync.Mutex // Protects following.
-	closed  bool
 	reqSeq  uint64
 	pending map[uint64]*rpcCall
+	streams map[string]*streamClients
+	closed  bool
+	err     error // Protected by mu and closed until context is cancelled.
 
 	reqMu sync.Mutex // Protects following.
 	req   Request
 	// Encodes and decodes JSON onto conn. Encoding is
 	// guarded by mutex and decoding is done by recv.
 	codec Codec
-
-	streamMu sync.Mutex // Protects following.
-	streams  map[string]*streamClients
 }
 
 // Response represents an RPC response or notification sent by the server.
@@ -370,7 +377,7 @@ func (c *Conn) send(ctx context.Context, call *rpcCall) (err error) {
 	c.mu.Lock()
 	if c.closed {
 		c.mu.Unlock()
-		return ErrConnClosing
+		return c.err
 	}
 	c.reqSeq++
 	reqID := c.reqSeq
@@ -399,10 +406,19 @@ func (c *Conn) send(ctx context.Context, call *rpcCall) (err error) {
 	}
 
 	if err != nil {
-		// Remove reference on error, avoid
-		// unnecessary work in recv.
 		c.mu.Lock()
-		delete(c.pending, reqID)
+		if c.closed {
+			// There is a chance that WriteRequest is executed in
+			// parallel with the closing of Conn. If it happens,
+			// err will be a "use of closed network connection"
+			// error, but we want to return the error that closed
+			// Conn.
+			err = c.err
+		} else {
+			// Remove reference on error, avoid
+			// unnecessary work in recv.
+			delete(c.pending, reqID)
+		}
 		c.mu.Unlock()
 		return err
 	}
@@ -413,23 +429,25 @@ func (c *Conn) send(ctx context.Context, call *rpcCall) (err error) {
 // notify handles RPC notifications and sends them
 // to the appropriate stream listeners.
 func (c *Conn) notify(method string, data []byte) {
-	c.streamMu.Lock()
+	c.mu.Lock()
 	stream := c.streams[method]
 	if stream != nil {
+		// Stream writer must be able to handle incoming writes
+		// even after it has been removed (unsubscribed).
 		stream.write(method, data)
 	}
-	c.streamMu.Unlock()
+	c.mu.Unlock()
 }
 
 // listen registers a new stream listener (chan) for the RPC notification
 // method. Returns a function for removing the listener. Error if the
 // connection is closed.
 func (c *Conn) listen(method string, w streamWriter) (func(), error) {
-	c.streamMu.Lock()
-	defer c.streamMu.Unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
 	if c.streams == nil {
-		return nil, ErrConnClosing
+		return nil, c.err
 	}
 
 	stream, ok := c.streams[method]
@@ -439,38 +457,63 @@ func (c *Conn) listen(method string, w streamWriter) (func(), error) {
 	}
 	seq := stream.add(w)
 
-	return func() { stream.remove(seq) }, nil
+	unsub := func() { stream.remove(seq) }
+	return unsub, nil
 }
 
-// Close closes the connection.
-func (c *Conn) close(err error) error {
-	c.cancel()
+type closeError struct {
+	msg string
+	err error
+}
 
+func (e *closeError) Cause() error {
+	return e.err
+}
+
+func (e *closeError) Error() string {
+	return fmt.Sprintf("%s: %v", e.msg, e.err)
+}
+
+// Close closes the connection. Subsequent calls to Close will return the error
+// that closed the connection.
+func (c *Conn) close(err error) error {
 	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	if c.closed {
-		c.mu.Unlock()
-		return ErrConnClosing
+		return c.err
 	}
 	c.closed = true
 	if err == nil {
 		err = ErrConnClosing
+	} else {
+		err = &closeError{msg: ErrConnClosing.Error(), err: err}
 	}
+	c.err = err
 	for id, call := range c.pending {
 		delete(c.pending, id)
 		call.done(err)
 	}
-	c.mu.Unlock()
-
-	// Stop sending on all streams.
-	c.streamMu.Lock()
+	// Stop sending on all streams by signaling
+	// that the connection is closed.
 	c.streams = nil
-	c.streamMu.Unlock()
 
 	// Conn can be nil if DialContext did not complete.
 	if c.conn != nil {
-		err = c.conn.Close()
+		wserr := c.conn.Close()
+		if wserr != nil && err == ErrConnClosing {
+			err = wserr
+			c.err = &closeError{msg: ErrConnClosing.Error(), err: err}
+		}
 	}
 
+	// Delay cancel until c.err has settled, at this point any active
+	// streams will be closed.
+	c.cancel()
+
+	if err == ErrConnClosing {
+		return nil
+	}
 	return err
 }
 

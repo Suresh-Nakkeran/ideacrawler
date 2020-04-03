@@ -21,6 +21,7 @@ package chromeclient
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -43,23 +44,28 @@ import (
 	"github.com/mafredri/cdp/session"
 	"github.com/phayes/freeport"
 	"golang.org/x/sync/errgroup"
+	"golang.org/x/sync/semaphore"
 )
 
 type ChromeClient struct {
-	cpath       string // path to browser binary
-	devt        *devtool.DevTools
-	pageTgt     *devtool.Target
-	conn        *rpcc.Conn
-	c           *cdp.Client
-	mgr         *session.Manager
-	ctx         context.Context
-	cancel      context.CancelFunc
-	chromeCmd   *exec.Cmd
-	domLoadTime time.Duration
-	rspRcvd     network.ResponseReceivedClient
-	started     bool
-	mu          sync.Mutex
-	up          bool
+	cpath         string // path to browser binary
+	userAgent     string
+	scrollCount   int32
+	disableImages bool
+	devt          *devtool.DevTools
+	pageTgt       *devtool.Target
+	conn          *rpcc.Conn
+	c             *cdp.Client
+	mgr           *session.Manager
+	ctx           context.Context
+	cancel        context.CancelFunc
+	chromeCmd     *exec.Cmd
+	domLoadTime   time.Duration
+	rspRcvd       network.ResponseReceivedClient
+	started       bool
+	mu            sync.Mutex
+	up            bool
+	sema          *semaphore.Weighted
 }
 
 type ChromeDoer struct {
@@ -69,16 +75,20 @@ type ChromeDoer struct {
 	cancel      context.CancelFunc
 }
 
-func NewChromeClient(path string) *ChromeClient {
+func NewChromeClient(path string, userAgent string, disableImages bool, scrollCount int32) *ChromeClient {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &ChromeClient{
-		cpath:       path,
-		devt:        nil,
-		chromeCmd:   nil,
-		ctx:         ctx,
-		cancel:      cancel,
-		domLoadTime: 5 * time.Second, // default 5 secs for page to load in browser before we get dump.
+		cpath:         path,
+		userAgent:     userAgent,
+		disableImages: disableImages,
+		scrollCount:   scrollCount,
+		devt:          nil,
+		chromeCmd:     nil,
+		ctx:           ctx,
+		cancel:        cancel,
+		domLoadTime:   5 * time.Second, // default 5 secs for page to load in browser before we get dump.
+		sema:          semaphore.NewWeighted(1),
 	}
 }
 
@@ -138,7 +148,14 @@ func (cc *ChromeClient) Start() error {
 
 	// TODO: add support for starting chrome from a container.
 	portStr := strconv.Itoa(port)
-	cc.chromeCmd = exec.Command(cc.cpath, "--headless", "--disable-gpu", "--remote-debugging-port="+portStr)
+	cmd_args := []string{"--headless", "--no-sandbox", "--disable-popup-blocking", "--ignore-certificate-errors", "--allow-running-insecure-content", "--disable-extensions", "--disable-gpu", "--remote-debugging-port=" + portStr}
+	if cc.userAgent != "" {
+		cmd_args = append(cmd_args, []string{"--user-agent=" + cc.userAgent, "--window-size=1920,1080"}...)
+	}
+	if cc.disableImages == true {
+		cmd_args = append(cmd_args, "'chrome.prefs': {'profile.managed_default_content_settings.images': 2}")
+	}
+	cc.chromeCmd = exec.Command(cc.cpath, cmd_args...)
 	err = cc.chromeCmd.Start()
 	if err != nil {
 		log.Println("Unable to start chrome browser in path '" + cc.cpath + "'. Error - " + err.Error())
@@ -241,6 +258,10 @@ func (cd *ChromeDoer) newPage() (*chromePage, error) {
 func (cd *ChromeDoer) closePage(p *chromePage) {
 	p.conn.Close()
 	cd.cc.c.Target.CloseTarget(cd.ctx, &target.CloseTargetArgs{p.targetID})
+}
+
+func (cd *ChromeDoer) activatePage(p *chromePage) error {
+	return cd.cc.c.Target.ActivateTarget(cd.ctx, &target.ActivateTargetArgs{p.targetID})
 }
 
 func (cd *ChromeDoer) doNavigate(req *http.Request, keepAlive bool) (resp *http.Response, p *chromePage, err error) {
@@ -368,9 +389,11 @@ func (cd *ChromeDoer) doJS(req *http.Request) (resp *http.Response, err error) {
 		return nil, err
 	}
 	if navRsp.StatusCode != 200 {
-		log.Printf("HTTP Status Code was: %v;  Use AddPage in chrome mode instead, to get page sent back anyway.")
-		return nil, err
+		log.Printf("HTTP Status Code was: %v;  Use AddPage in chrome mode instead, to get page sent back anyway.", navRsp.StatusCode)
+		log.Println(navRsp.Status)
+		return nil, errors.New(navRsp.Status)
 	}
+	defer cd.closePage(newPage)
 
 	if strings.HasSuffix(req.URL.Scheme, "builtinjs") {
 		switch jscommand {
@@ -392,13 +415,24 @@ func (cd *ChromeDoer) doJS(req *http.Request) (resp *http.Response, err error) {
                                    }, ` + strconv.Itoa(int(cd.domLoadTime/time.Millisecond)) + `);
                                });
 `
+			var count int32
 			for {
+				if cd.cc.scrollCount > 0 && cd.cc.scrollCount >= count {
+					break
+				}
+				cd.cc.sema.Acquire(context.Background(), 1)
 				evalArgs := runtime.NewEvaluateArgs(expression).SetAwaitPromise(true).SetReturnByValue(true)
+				err := cd.activatePage(newPage) // to activate processing tab
+				if err != nil {
+					log.Println(err)
+					return nil, err
+				}
 				eval, err := newPage.client.Runtime.Evaluate(cd.ctx, evalArgs)
 				if err != nil {
 					log.Println(err)
 					return nil, err
 				}
+				cd.cc.sema.Release(1)
 				heights := &struct {
 					O int
 					N int
@@ -412,6 +446,8 @@ func (cd *ChromeDoer) doJS(req *http.Request) (resp *http.Response, err error) {
 					break
 				}
 				log.Printf("Old height: %v; New height: %v; Continuing to scroll down.\n", heights.O, heights.N)
+				count = count + 1
+				time.Sleep(5 * time.Second)
 			}
 		}
 	} else if strings.HasSuffix(req.URL.Scheme, "jscript") {
@@ -494,7 +530,7 @@ func runBatch(fn ...runBatchFunc) error {
 }
 
 func zmain() {
-	cl := NewChromeClient("/usr/lib64/chromium-browser/headless_shell")
+	cl := NewChromeClient("/usr/lib64/chromium-browser/headless_shell", "", true, 0)
 	cl.Start()
 	defer cl.Stop()
 	urlobj, _ := url.Parse("http://books.toscrape.com/")

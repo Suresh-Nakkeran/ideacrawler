@@ -3,11 +3,15 @@ package devtool
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
+	"strings"
+	"sync"
+
+	"github.com/mafredri/cdp/internal/errors"
 )
 
 // DevToolsOption represents a function that sets a DevTools option.
@@ -26,6 +30,9 @@ func WithClient(client *http.Client) DevToolsOption {
 type DevTools struct {
 	url    string
 	client *http.Client
+
+	mu     sync.Mutex // Protects following.
+	lookup bool
 }
 
 // New returns a DevTools instance that uses URL.
@@ -90,7 +97,19 @@ func (d *DevTools) CreateURL(ctx context.Context, openURL string) (*Target, erro
 	// Returned by Headless Chrome that does
 	// not support the "/json/new" endpoint.
 	case http.StatusInternalServerError:
-		return headlessCreateURL(ctx, d, openURL)
+		err2 := parseError("CreateUrl: StatusInternalServerError", resp.Body)
+
+		v, err := d.Version(ctx)
+		if err != nil {
+			return nil, err2
+		}
+
+		if v.WebSocketDebuggerURL != "" {
+			// This version is too new since it has a debugger URL set.
+			return nil, err2
+		}
+
+		return fallbackHeadlessCreateURL(ctx, d, openURL)
 
 	case http.StatusOK:
 		t := new(Target)
@@ -178,7 +197,7 @@ type Version struct {
 	AndroidPackage string `json:"Android-Package"`
 
 	// Present in Chrome >= 62. Generic browser websocket URL.
-	WebSocketDebuggerURL string `json:"websocketDebuggerUrl"`
+	WebSocketDebuggerURL string `json:"webSocketDebuggerUrl"`
 }
 
 // Version returns the version information for the DevTools endpoint.
@@ -202,12 +221,79 @@ func (d *DevTools) httpGet(ctx context.Context, path string) (*http.Response, er
 		ctx = context.Background()
 	}
 
+	err := d.resolveHost(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	req, err := http.NewRequest(http.MethodGet, d.url+path, nil)
 	if err != nil {
 		return nil, err
 	}
 
 	return d.client.Do(req.WithContext(ctx))
+}
+
+// resolveHost does a lookup on the hostname in d.url and tries to
+// replace it with a valid IP address. Ever since Chrome 66, the
+// DevTools endpoint disallows hostnames other than "localhost".
+//
+// Example error:
+// < HTTP/1.1 500 Internal Server Error
+// < Content-Length:63
+// < Content-Type:text/html
+// <
+// Host header is specified and is not an IP address or localhost.
+func (d *DevTools) resolveHost(ctx context.Context) error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	if d.lookup {
+		return nil
+	}
+	d.lookup = true
+
+	u, err := url.Parse(d.url)
+	if err != nil {
+		return err
+	}
+	host := strings.Split(u.Host, ":")
+	origHost := host[0]
+
+	if origHost == "localhost" {
+		return nil // Nothing to do, localhost is allowed.
+	}
+
+	addrs, err := net.DefaultResolver.LookupHost(ctx, origHost)
+	if err != nil {
+		return err
+	}
+
+	newURL := ""
+	for _, a := range addrs {
+		host[0] = a
+		u.Host = strings.Join(host, ":")
+		try := u.String()
+
+		// The selection of "/json/version" here is arbitrary,
+		// it just needs to exist and not have side-effects.
+		req, err := http.NewRequest(http.MethodGet, try+"/json/version", nil)
+		if err != nil {
+			return err
+		}
+
+		resp, err := d.client.Do(req.WithContext(ctx))
+		if err == nil && resp.StatusCode == 200 {
+			newURL = try
+			break
+		}
+	}
+	if newURL == "" {
+		return errors.New("could not resolve IP for " + origHost)
+	}
+	d.url = newURL
+
+	return nil
 }
 
 func parseError(from string, r io.Reader) error {

@@ -48,9 +48,13 @@ func (d *domainClient) Disable(ctx context.Context) (err error) {
 // Enable invokes the Debugger method. Enables debugger for the given page.
 // Clients should not assume that the debugging has been enabled until the
 // result for this command is received.
-func (d *domainClient) Enable(ctx context.Context) (reply *EnableReply, err error) {
+func (d *domainClient) Enable(ctx context.Context, args *EnableArgs) (reply *EnableReply, err error) {
 	reply = new(EnableReply)
-	err = rpcc.Invoke(ctx, "Debugger.enable", nil, reply, d.conn)
+	if args != nil {
+		err = rpcc.Invoke(ctx, "Debugger.enable", args, reply, d.conn)
+	} else {
+		err = rpcc.Invoke(ctx, "Debugger.enable", nil, reply, d.conn)
+	}
 	if err != nil {
 		err = &internal.OpError{Domain: "Debugger", Op: "Enable", Err: err}
 	}
@@ -99,6 +103,21 @@ func (d *domainClient) GetScriptSource(ctx context.Context, args *GetScriptSourc
 	}
 	if err != nil {
 		err = &internal.OpError{Domain: "Debugger", Op: "GetScriptSource", Err: err}
+	}
+	return
+}
+
+// GetWasmBytecode invokes the Debugger method. This command is deprecated.
+// Use getScriptSource instead.
+func (d *domainClient) GetWasmBytecode(ctx context.Context, args *GetWasmBytecodeArgs) (reply *GetWasmBytecodeReply, err error) {
+	reply = new(GetWasmBytecodeReply)
+	if args != nil {
+		err = rpcc.Invoke(ctx, "Debugger.getWasmBytecode", args, reply, d.conn)
+	} else {
+		err = rpcc.Invoke(ctx, "Debugger.getWasmBytecode", nil, reply, d.conn)
+	}
+	if err != nil {
+		err = &internal.OpError{Domain: "Debugger", Op: "GetWasmBytecode", Err: err}
 	}
 	return
 }
@@ -170,24 +189,14 @@ func (d *domainClient) RestartFrame(ctx context.Context, args *RestartFrameArgs)
 }
 
 // Resume invokes the Debugger method. Resumes JavaScript execution.
-func (d *domainClient) Resume(ctx context.Context) (err error) {
-	err = rpcc.Invoke(ctx, "Debugger.resume", nil, nil, d.conn)
+func (d *domainClient) Resume(ctx context.Context, args *ResumeArgs) (err error) {
+	if args != nil {
+		err = rpcc.Invoke(ctx, "Debugger.resume", args, nil, d.conn)
+	} else {
+		err = rpcc.Invoke(ctx, "Debugger.resume", nil, nil, d.conn)
+	}
 	if err != nil {
 		err = &internal.OpError{Domain: "Debugger", Op: "Resume", Err: err}
-	}
-	return
-}
-
-// ScheduleStepIntoAsync invokes the Debugger method. This method is
-// deprecated - use Debugger.stepInto with breakOnAsyncCall and
-// Debugger.pauseOnAsyncTask instead. Steps into next scheduled async task if
-// any is scheduled before next pause. Returns success when async task is
-// actually scheduled, returns error if no task were scheduled or another
-// scheduleStepIntoAsync was called.
-func (d *domainClient) ScheduleStepIntoAsync(ctx context.Context) (err error) {
-	err = rpcc.Invoke(ctx, "Debugger.scheduleStepIntoAsync", nil, nil, d.conn)
-	if err != nil {
-		err = &internal.OpError{Domain: "Debugger", Op: "ScheduleStepIntoAsync", Err: err}
 	}
 	return
 }
@@ -266,6 +275,21 @@ func (d *domainClient) SetBreakpoint(ctx context.Context, args *SetBreakpointArg
 	}
 	if err != nil {
 		err = &internal.OpError{Domain: "Debugger", Op: "SetBreakpoint", Err: err}
+	}
+	return
+}
+
+// SetInstrumentationBreakpoint invokes the Debugger method. Sets
+// instrumentation breakpoint.
+func (d *domainClient) SetInstrumentationBreakpoint(ctx context.Context, args *SetInstrumentationBreakpointArgs) (reply *SetInstrumentationBreakpointReply, err error) {
+	reply = new(SetInstrumentationBreakpointReply)
+	if args != nil {
+		err = rpcc.Invoke(ctx, "Debugger.setInstrumentationBreakpoint", args, reply, d.conn)
+	} else {
+		err = rpcc.Invoke(ctx, "Debugger.setInstrumentationBreakpoint", nil, reply, d.conn)
+	}
+	if err != nil {
+		err = &internal.OpError{Domain: "Debugger", Op: "SetInstrumentationBreakpoint", Err: err}
 	}
 	return
 }

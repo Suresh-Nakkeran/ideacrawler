@@ -1,7 +1,7 @@
 package goclient
 
 import (
-	pb "github.com/shsms/ideacrawler/protofiles"
+	pb "github.com/Suresh-Nakkeran/ideacrawler/protofiles"
 )
 
 type Option func(*JobSpec)
@@ -208,5 +208,17 @@ func CallbackXpathRegexp(mdata KVMap) Option {
 		for k, v := range mdata {
 			args.dopt.CallbackXpathRegexp = append(args.dopt.CallbackXpathRegexp, &pb.KVP{Key: k, Value: v})
 		}
+	}
+}
+
+func DisableImages() Option {
+	return func(args *JobSpec) {
+		args.dopt.DisableImages = true
+	}
+}
+
+func ScrollCount(vv int32) Option {
+	return func(args *JobSpec) {
+		args.dopt.ScrollCount = vv
 	}
 }

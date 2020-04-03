@@ -1,159 +1,189 @@
-# github.com/PuerkitoBio/fetchbot v1.1.2
-github.com/PuerkitoBio/fetchbot
-# github.com/PuerkitoBio/goquery v1.5.0
+# github.com/PuerkitoBio/goquery v1.5.1
+## explicit
 github.com/PuerkitoBio/goquery
-# github.com/PuerkitoBio/purell v1.1.0
+# github.com/PuerkitoBio/purell v1.1.1
+## explicit
 github.com/PuerkitoBio/purell
 # github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578
+## explicit
 github.com/PuerkitoBio/urlesc
-# github.com/andybalholm/cascadia v1.0.0
+# github.com/Suresh-Nakkeran/fetchbot v1.2.0 => /home/suresh/go-workspace/src/github.com/Suresh-Nakkeran/fetchbot
+## explicit
+github.com/Suresh-Nakkeran/fetchbot
+# github.com/andybalholm/cascadia v1.1.0
 github.com/andybalholm/cascadia
-# github.com/antchfx/xpath v0.0.0-20181208024549-4bbdf6db12aa
+# github.com/antchfx/xpath v1.1.4
+## explicit
 github.com/antchfx/xpath
 # github.com/antchfx/xquery v0.0.0-20180515051857-ad5b8c7a47b0
+## explicit
 github.com/antchfx/xquery/html
-# github.com/golang/protobuf v1.2.1-0.20190109072247-347cf4a86c1c
-github.com/golang/protobuf/ptypes
-github.com/golang/protobuf/ptypes/empty
+# github.com/golang/protobuf v1.3.5
+## explicit
 github.com/golang/protobuf/proto
-github.com/golang/protobuf/ptypes/timestamp
+github.com/golang/protobuf/ptypes
 github.com/golang/protobuf/ptypes/any
 github.com/golang/protobuf/ptypes/duration
-# github.com/google/btree v0.0.0-20180813153112-4030bb1f1f0c
+github.com/golang/protobuf/ptypes/empty
+github.com/golang/protobuf/ptypes/timestamp
+# github.com/google/btree v1.0.0
+## explicit
 github.com/google/btree
-# github.com/google/uuid v1.1.0
+# github.com/google/uuid v1.1.1
+## explicit
 github.com/google/uuid
-# github.com/gorilla/websocket v1.4.0
+# github.com/gorilla/websocket v1.4.2
 github.com/gorilla/websocket
-# github.com/gregjones/httpcache v0.0.0-20181110185634-c63ab54fda8f
+# github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79
+## explicit
 github.com/gregjones/httpcache
 github.com/gregjones/httpcache/diskcache
-# github.com/hashicorp/yamux v0.0.0-20181012175058-2f1d1f20f75d
+# github.com/hashicorp/yamux v0.0.0-20190923154419-df201c70410d
+## explicit
 github.com/hashicorp/yamux
-# github.com/mafredri/cdp v0.20.0
+# github.com/mafredri/cdp v0.26.0
+## explicit
 github.com/mafredri/cdp
 github.com/mafredri/cdp/devtool
-github.com/mafredri/cdp/protocol/dom
-github.com/mafredri/cdp/protocol/network
-github.com/mafredri/cdp/protocol/page
-github.com/mafredri/cdp/protocol/runtime
-github.com/mafredri/cdp/protocol/target
-github.com/mafredri/cdp/rpcc
-github.com/mafredri/cdp/session
 github.com/mafredri/cdp/internal/errors
 github.com/mafredri/cdp/protocol/accessibility
 github.com/mafredri/cdp/protocol/animation
 github.com/mafredri/cdp/protocol/applicationcache
 github.com/mafredri/cdp/protocol/audits
+github.com/mafredri/cdp/protocol/backgroundservice
 github.com/mafredri/cdp/protocol/browser
 github.com/mafredri/cdp/protocol/cachestorage
+github.com/mafredri/cdp/protocol/cast
 github.com/mafredri/cdp/protocol/console
 github.com/mafredri/cdp/protocol/css
 github.com/mafredri/cdp/protocol/database
 github.com/mafredri/cdp/protocol/debugger
 github.com/mafredri/cdp/protocol/deviceorientation
+github.com/mafredri/cdp/protocol/dom
 github.com/mafredri/cdp/protocol/domdebugger
 github.com/mafredri/cdp/protocol/domsnapshot
 github.com/mafredri/cdp/protocol/domstorage
 github.com/mafredri/cdp/protocol/emulation
+github.com/mafredri/cdp/protocol/fetch
 github.com/mafredri/cdp/protocol/headlessexperimental
 github.com/mafredri/cdp/protocol/heapprofiler
 github.com/mafredri/cdp/protocol/indexeddb
 github.com/mafredri/cdp/protocol/input
 github.com/mafredri/cdp/protocol/inspector
+github.com/mafredri/cdp/protocol/internal
 github.com/mafredri/cdp/protocol/io
 github.com/mafredri/cdp/protocol/layertree
 github.com/mafredri/cdp/protocol/log
+github.com/mafredri/cdp/protocol/media
 github.com/mafredri/cdp/protocol/memory
+github.com/mafredri/cdp/protocol/network
 github.com/mafredri/cdp/protocol/overlay
+github.com/mafredri/cdp/protocol/page
 github.com/mafredri/cdp/protocol/performance
 github.com/mafredri/cdp/protocol/profiler
+github.com/mafredri/cdp/protocol/runtime
 github.com/mafredri/cdp/protocol/schema
 github.com/mafredri/cdp/protocol/security
 github.com/mafredri/cdp/protocol/serviceworker
 github.com/mafredri/cdp/protocol/storage
 github.com/mafredri/cdp/protocol/systeminfo
-github.com/mafredri/cdp/protocol/testing
+github.com/mafredri/cdp/protocol/target
 github.com/mafredri/cdp/protocol/tethering
 github.com/mafredri/cdp/protocol/tracing
-github.com/mafredri/cdp/protocol/internal
+github.com/mafredri/cdp/protocol/webaudio
+github.com/mafredri/cdp/protocol/webauthn
+github.com/mafredri/cdp/rpcc
+github.com/mafredri/cdp/session
 # github.com/peterbourgon/diskv v2.0.1+incompatible
+## explicit
 github.com/peterbourgon/diskv
-# github.com/phayes/freeport v0.0.0-20171002181615-b8543db493a5
+# github.com/phayes/freeport v0.0.0-20180830031419-95f893ade6f2
+## explicit
 github.com/phayes/freeport
-# github.com/shsms/fetchbot v1.1.3-0.20190202140914-775bee3cb83a
-github.com/shsms/fetchbot
 # github.com/shsms/sflag v0.0.0-20160229091130-0ec38aa16580
+## explicit
 github.com/shsms/sflag
-# github.com/temoto/robotstxt-go v0.0.0-20180810133444-97ee4a9ee6ea
-github.com/temoto/robotstxt-go
-# golang.org/x/net v0.0.0-20190107155100-1a61f4433d85
+# github.com/temoto/robotstxt v1.1.1
+## explicit
+github.com/temoto/robotstxt
+# golang.org/x/net v0.0.0-20200324143707-d3edc9973b7e
+## explicit
 golang.org/x/net/context
 golang.org/x/net/html
-golang.org/x/net/idna
-golang.org/x/net/html/charset
-golang.org/x/net/trace
 golang.org/x/net/html/atom
-golang.org/x/net/internal/timeseries
+golang.org/x/net/html/charset
+golang.org/x/net/http/httpguts
 golang.org/x/net/http2
 golang.org/x/net/http2/hpack
-golang.org/x/net/http/httpguts
-# golang.org/x/sync v0.0.0-20181221193216-37e7f081c4d4
-golang.org/x/sync/semaphore
+golang.org/x/net/idna
+golang.org/x/net/internal/timeseries
+golang.org/x/net/trace
+# golang.org/x/sync v0.0.0-20200317015054-43a5402ce75a
+## explicit
 golang.org/x/sync/errgroup
-# golang.org/x/sys v0.0.0-20190107070147-cb59ee366067
+golang.org/x/sync/semaphore
+# golang.org/x/sys v0.0.0-20200323222414-85ca7c5b95cd
 golang.org/x/sys/unix
 # golang.org/x/text v0.3.0
-golang.org/x/text/unicode/norm
-golang.org/x/text/width
-golang.org/x/text/secure/bidirule
-golang.org/x/text/unicode/bidi
-golang.org/x/text/transform
 golang.org/x/text/encoding
 golang.org/x/text/encoding/charmap
 golang.org/x/text/encoding/htmlindex
-golang.org/x/text/encoding/internal/identifier
 golang.org/x/text/encoding/internal
+golang.org/x/text/encoding/internal/identifier
 golang.org/x/text/encoding/japanese
 golang.org/x/text/encoding/korean
 golang.org/x/text/encoding/simplifiedchinese
 golang.org/x/text/encoding/traditionalchinese
 golang.org/x/text/encoding/unicode
-golang.org/x/text/language
-golang.org/x/text/internal/utf8internal
-golang.org/x/text/runes
 golang.org/x/text/internal/tag
-# google.golang.org/genproto v0.0.0-20181221175505-bd9b4fb69e2f
+golang.org/x/text/internal/utf8internal
+golang.org/x/text/language
+golang.org/x/text/runes
+golang.org/x/text/secure/bidirule
+golang.org/x/text/transform
+golang.org/x/text/unicode/bidi
+golang.org/x/text/unicode/norm
+golang.org/x/text/width
+# google.golang.org/genproto v0.0.0-20190819201941-24fa4b261c55
 google.golang.org/genproto/googleapis/rpc/status
-# google.golang.org/grpc v1.17.0
+# google.golang.org/grpc v1.28.0
+## explicit
 google.golang.org/grpc
-google.golang.org/grpc/connectivity
+google.golang.org/grpc/attributes
+google.golang.org/grpc/backoff
 google.golang.org/grpc/balancer
+google.golang.org/grpc/balancer/base
 google.golang.org/grpc/balancer/roundrobin
+google.golang.org/grpc/binarylog/grpc_binarylog_v1
 google.golang.org/grpc/codes
+google.golang.org/grpc/connectivity
 google.golang.org/grpc/credentials
+google.golang.org/grpc/credentials/internal
 google.golang.org/grpc/encoding
 google.golang.org/grpc/encoding/proto
 google.golang.org/grpc/grpclog
 google.golang.org/grpc/internal
 google.golang.org/grpc/internal/backoff
+google.golang.org/grpc/internal/balancerload
 google.golang.org/grpc/internal/binarylog
+google.golang.org/grpc/internal/buffer
 google.golang.org/grpc/internal/channelz
 google.golang.org/grpc/internal/envconfig
+google.golang.org/grpc/internal/grpclog
 google.golang.org/grpc/internal/grpcrand
 google.golang.org/grpc/internal/grpcsync
+google.golang.org/grpc/internal/grpcutil
+google.golang.org/grpc/internal/resolver/dns
+google.golang.org/grpc/internal/resolver/passthrough
+google.golang.org/grpc/internal/syscall
 google.golang.org/grpc/internal/transport
 google.golang.org/grpc/keepalive
 google.golang.org/grpc/metadata
 google.golang.org/grpc/naming
 google.golang.org/grpc/peer
 google.golang.org/grpc/resolver
-google.golang.org/grpc/resolver/dns
-google.golang.org/grpc/resolver/passthrough
+google.golang.org/grpc/serviceconfig
 google.golang.org/grpc/stats
 google.golang.org/grpc/status
 google.golang.org/grpc/tap
-google.golang.org/grpc/balancer/base
-google.golang.org/grpc/credentials/internal
-google.golang.org/grpc/binarylog/grpc_binarylog_v1
-google.golang.org/grpc/internal/syscall
+# github.com/Suresh-Nakkeran/fetchbot => /home/suresh/go-workspace/src/github.com/Suresh-Nakkeran/fetchbot

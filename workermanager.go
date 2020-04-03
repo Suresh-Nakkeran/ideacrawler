@@ -10,9 +10,9 @@ import (
 	"net/http"
 	"os"
 
+	gc "github.com/Suresh-Nakkeran/ideacrawler/goclient"
 	"github.com/google/uuid"
 	"github.com/hashicorp/yamux"
-	gc "github.com/shsms/ideacrawler/goclient"
 )
 
 type worker struct {
