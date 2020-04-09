@@ -69,6 +69,7 @@ func (gc *Doer) Do(req *http.Request) (*http.Response, error) {
 		gc.job.log.Printf("Next delay - %v\n", time.Duration(afterTime)*time.Second)
 	}
 	after := time.After(time.Duration(afterTime) * time.Second)
+	log.Printf("doing url %v", req.URL)
 	resp, err := gc.doer.Do(req)
 	if err != nil {
 		return nil, err

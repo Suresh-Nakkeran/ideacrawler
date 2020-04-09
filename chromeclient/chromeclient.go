@@ -168,7 +168,7 @@ func (cc *ChromeClient) Start() error {
 		cc.up = false
 	}()
 
-	time.Sleep(3 * time.Second) // TODO: make customizable. give a few seconds for browser to start.
+	time.Sleep(2 * time.Second) // TODO: make customizable. give a few seconds for browser to start.
 
 	cc.devt = devtool.New("http://localhost:" + portStr)
 	cc.pageTgt, err = cc.devt.Get(cc.ctx, devtool.Page)
@@ -417,7 +417,7 @@ func (cd *ChromeDoer) doJS(req *http.Request) (resp *http.Response, err error) {
 `
 			var count int32
 			for {
-				if cd.cc.scrollCount > 0 && cd.cc.scrollCount >= count {
+				if cd.cc.scrollCount > 0 && cd.cc.scrollCount <= count {
 					break
 				}
 				cd.cc.sema.Acquire(context.Background(), 1)
@@ -447,7 +447,7 @@ func (cd *ChromeDoer) doJS(req *http.Request) (resp *http.Response, err error) {
 				}
 				log.Printf("Old height: %v; New height: %v; Continuing to scroll down.\n", heights.O, heights.N)
 				count = count + 1
-				time.Sleep(5 * time.Second)
+				time.Sleep(3 * time.Second)
 			}
 		}
 	} else if strings.HasSuffix(req.URL.Scheme, "jscript") {

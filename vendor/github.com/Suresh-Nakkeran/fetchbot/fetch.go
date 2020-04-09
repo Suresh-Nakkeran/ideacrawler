@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -203,6 +204,7 @@ func (q *Queue) Send(c Command) error {
 	default:
 		q.ch <- c
 	}
+	log.Printf("received command : %v\n", c.URL())
 	return nil
 }
 
@@ -245,6 +247,7 @@ func (q *Queue) sendWithMethod(method string, rawurl []string) (int, error) {
 
 // Start starts the Fetcher, and returns the Queue to use to send Commands to be fetched.
 func (f *Fetcher) Start() *Queue {
+	log.Println("starting fetcher queue...")
 	f.hosts = make(map[string]chan Command)
 
 	f.q = &Queue{
@@ -368,6 +371,7 @@ func (f *Fetcher) processChan(ch <-chan Command, hostKey string) {
 	)
 
 	if f.ThreadsPerSite > 0 {
+		log.Println("ThreadsPerSite : ", f.ThreadsPerSite)
 		sema = semaphore.NewWeighted(f.ThreadsPerSite)
 	}
 	ttlWatchTicker := time.NewTicker(5 * time.Second)
@@ -408,10 +412,12 @@ loop:
 			case agent == nil || agent.Test(v.URL().Path):
 				// Path allowed, process the request
 				sema.Acquire(context.Background(), 1)
+				log.Printf("url %v acquired fetcher semaphore...", v.URL())
 				go func() {
 					res, err := f.doRequest(v)
 					f.visit(v, res, err)
 					sema.Release(1)
+					log.Printf("url %v released fetcher semaphore...", v.URL())
 				}()
 
 			default:

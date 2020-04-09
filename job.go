@@ -93,12 +93,19 @@ func (j *job) fetchErrorHandler(ctx *fetchbot.Context, res *http.Response, err e
 		return
 	}
 	j.log.Printf("ERR - fetch error : %s\n", err.Error())
+	var reqURL string
+	if strings.HasPrefix(ctx.Cmd.URL().Scheme, "crawljs") == true {
+		reqURL, _ = url.QueryUnescape(ctx.Cmd.URL().RawQuery)
+	} else {
+		reqURL = ctx.Cmd.URL().String()
+	}
+
 	phtml := pb.PageHTML{
 		Success: false,
 		Error:   err.Error(),
 		JobID:   &pb.JobID{},
 		//TODO -- Check if ctx always has the correct URL
-		Url:            ctx.Cmd.URL().String(),
+		Url:            reqURL,
 		Httpstatuscode: sc.FetchbotError,
 		Content:        []byte{},
 		MetaStr:        ctx.Cmd.(crawlCommand).MetaStr(),
@@ -185,26 +192,28 @@ func (j *job) fetchHTTPGetHandler(ctx *fetchbot.Context, res *http.Response, err
 	}
 
 	// Enqueue all links as HEAD requests, if they match followUrlRegexp
-	if j.opts.NoFollow == false && (j.followURLRegexp == nil || j.followURLRegexp.MatchString(ctx.Cmd.URL().String()) == true) && (j.opts.Depth < 0 || ccmd.URLDepth() < j.opts.Depth) {
-		// Process the body to find the links
-		doc, err := goquery.NewDocumentFromReader(strings.NewReader(string(pageBody)))
-		if err != nil {
-			emsg := fmt.Sprintf("ERR - %s %s - %s\n", ctx.Cmd.Method(), ctx.Cmd.URL(), err)
-			j.log.Println(emsg)
-			phtml := pb.PageHTML{
-				Success:        false,
-				Error:          emsg,
-				JobID:          &pb.JobID{},
-				Url:            "",
-				Httpstatuscode: sc.FollowParseError,
-				Content:        []byte{},
-				UrlDepth:       ccmd.URLDepth(),
+	if j.opts.NoFollow == false && (j.followURLRegexp == nil || j.followURLRegexp.MatchString(ctx.Cmd.URL().String())) {
+		if j.opts.Depth < 0 || ((ccmd.URLDepth() + 1) < j.opts.Depth) || ((ccmd.URLDepth()+1) == j.opts.Depth && (j.callbackURLRegexp == nil || j.callbackURLRegexp.MatchString(ctx.Cmd.URL().String()) == true)) {
+			// Process the body to find the links
+			doc, err := goquery.NewDocumentFromReader(strings.NewReader(string(pageBody)))
+			if err != nil {
+				emsg := fmt.Sprintf("ERR - %s %s - %s\n", ctx.Cmd.Method(), ctx.Cmd.URL(), err)
+				j.log.Println(emsg)
+				phtml := pb.PageHTML{
+					Success:        false,
+					Error:          emsg,
+					JobID:          &pb.JobID{},
+					Url:            "",
+					Httpstatuscode: sc.FollowParseError,
+					Content:        []byte{},
+					UrlDepth:       ccmd.URLDepth(),
+				}
+				j.sendPageHTML(ctx, phtml)
+				return
 			}
-			j.sendPageHTML(ctx, phtml)
-			return
+			j.enqueueLinks(ctx, doc, ccmd.URLDepth()+1, requestURL)
+			j.log.Println("Enqueued", ctx.Cmd.URL().String())
 		}
-		j.enqueueLinks(ctx, doc, ccmd.URLDepth()+1, requestURL)
-		j.log.Println("Enqueued", ctx.Cmd.URL().String())
 	}
 
 	var callbackPage = false
@@ -843,13 +852,28 @@ func (j *job) enqueueLinks(ctx *fetchbot.Context, doc *goquery.Document, urlDept
 				return
 
 			}
-
-			cmd := crawlCommand{
-				method:     SendMethod,
-				url:        parsedURL,
-				metaStr:    ctx.Cmd.(crawlCommand).MetaStr(),
-				urlDepth:   urlDepth,
-				anchorText: anchorText,
+			var cmd crawlCommand
+			if j.opts.Chrome == true && j.opts.ScrollCount > 0 {
+				cmd = crawlCommand{
+					method: "GET",
+					url: &url.URL{
+						Scheme:   "crawljs-builtinjs",
+						Host:     parsedURL.Host,
+						Path:     url.PathEscape("infiniteScrollToEnd"), // url command name
+						RawQuery: url.QueryEscape(parsedURL.String()),
+					},
+					metaStr:    ctx.Cmd.(crawlCommand).MetaStr(),
+					urlDepth:   urlDepth,
+					anchorText: anchorText,
+				}
+			} else {
+				cmd = crawlCommand{
+					method:     SendMethod,
+					url:        parsedURL,
+					metaStr:    ctx.Cmd.(crawlCommand).MetaStr(),
+					urlDepth:   urlDepth,
+					anchorText: anchorText,
+				}
 			}
 			//cmd, err := CreateCommand(SendMethod, nurl, "", urlDepth)
 			//if err != nil {
