@@ -16,6 +16,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/PuerkitoBio/purell"
@@ -192,28 +193,26 @@ func (j *job) fetchHTTPGetHandler(ctx *fetchbot.Context, res *http.Response, err
 	}
 
 	// Enqueue all links as HEAD requests, if they match followUrlRegexp
-	if j.opts.NoFollow == false && (j.followURLRegexp == nil || j.followURLRegexp.MatchString(ctx.Cmd.URL().String())) {
-		if j.opts.Depth < 0 || ((ccmd.URLDepth() + 1) < j.opts.Depth) || ((ccmd.URLDepth()+1) == j.opts.Depth && (j.callbackURLRegexp == nil || j.callbackURLRegexp.MatchString(ctx.Cmd.URL().String()) == true)) {
-			// Process the body to find the links
-			doc, err := goquery.NewDocumentFromReader(strings.NewReader(string(pageBody)))
-			if err != nil {
-				emsg := fmt.Sprintf("ERR - %s %s - %s\n", ctx.Cmd.Method(), ctx.Cmd.URL(), err)
-				j.log.Println(emsg)
-				phtml := pb.PageHTML{
-					Success:        false,
-					Error:          emsg,
-					JobID:          &pb.JobID{},
-					Url:            "",
-					Httpstatuscode: sc.FollowParseError,
-					Content:        []byte{},
-					UrlDepth:       ccmd.URLDepth(),
-				}
-				j.sendPageHTML(ctx, phtml)
-				return
+	if j.opts.NoFollow == false && (j.followURLRegexp == nil || j.followURLRegexp.MatchString(ctx.Cmd.URL().String()) == true) && (j.opts.Depth < 0 || ccmd.URLDepth() < j.opts.Depth) {
+		// Process the body to find the links
+		doc, err := goquery.NewDocumentFromReader(strings.NewReader(string(pageBody)))
+		if err != nil {
+			emsg := fmt.Sprintf("ERR - %s %s - %s\n", ctx.Cmd.Method(), ctx.Cmd.URL(), err)
+			j.log.Println(emsg)
+			phtml := pb.PageHTML{
+				Success:        false,
+				Error:          emsg,
+				JobID:          &pb.JobID{},
+				Url:            "",
+				Httpstatuscode: sc.FollowParseError,
+				Content:        []byte{},
+				UrlDepth:       ccmd.URLDepth(),
 			}
-			j.enqueueLinks(ctx, doc, ccmd.URLDepth()+1, requestURL)
-			j.log.Println("Enqueued", ctx.Cmd.URL().String())
+			j.sendPageHTML(ctx, phtml)
+			return
 		}
+		j.enqueueLinks(ctx, doc, ccmd.URLDepth()+1, requestURL)
+		j.log.Println("Enqueued", ctx.Cmd.URL().String())
 	}
 
 	var callbackPage = false
@@ -809,6 +808,13 @@ func (j *job) checkEnqueueEligibility(nurl string, anchorText string) bool {
 }
 
 func (j *job) enqueueLinks(ctx *fetchbot.Context, doc *goquery.Document, urlDepth int32, requestURL *url.URL) {
+	// func to clean non-utf8 characters from anchor text
+	fixUTFStr := func(r rune) rune {
+		if r == utf8.RuneError {
+			return -1
+		}
+		return r
+	}
 	j.mu.Lock()
 	defer j.mu.Unlock()
 	var SendMethod = "GET"
@@ -818,7 +824,11 @@ func (j *job) enqueueLinks(ctx *fetchbot.Context, doc *goquery.Document, urlDept
 	var urlMap = make(map[string]bool)
 	doc.Find("a[href]").Each(func(i int, s *goquery.Selection) {
 		val, _ := s.Attr("href")
-		anchorText := strings.TrimSpace(s.Text())
+		anchorText := strings.Map(fixUTFStr, strings.TrimSpace(s.Text()))
+
+		if (urlDepth == j.opts.Depth && j.callbackURLRegexp != nil) && (j.callbackURLRegexp.MatchString(strings.ToLower(val)) == false && j.callbackURLRegexp.MatchString(strings.ToLower(anchorText)) == false) {
+			return
+		}
 
 		// Resolve address
 		u, err := requestURL.Parse(val)
